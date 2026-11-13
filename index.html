@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>КиноРецензии</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; margin: 0; padding: 0; }
+        header { background-color: #1e1e1e; padding: 15px 0; border-bottom: 2px solid #ffb400; }
+        .nav { max-width: 1000px; margin: 0 auto; display: flex; gap: 20px; padding: 0 20px; }
+        .nav a { color: #fff; text-decoration: none; font-size: 18px; font-weight: bold; cursor: pointer; padding: 5px 10px; border-radius: 5px; }
+        .nav a:hover, .nav a.active { color: #ffb400; background-color: #2a2a2a; }
+        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        h1 { color: #ffb400; }
+        h2 { border-bottom: 1px solid #333; padding-bottom: 10px; margin-top: 30px; }
+        
+        /* Фильтры */
+        .filters { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; }
+        select { padding: 10px; font-size: 16px; background-color: #121212; color: white; border: 1px solid #444; border-radius: 5px; }
+        
+        /* Сетка */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+        .card { background-color: #1e1e1e; border-radius: 8px; overflow: hidden; cursor: pointer; border: 1px solid #333; transition: 0.2s; }
+        .card:hover { border-color: #ffb400; transform: translateY(-5px); }
+        
+        /* Постер в карточке */
+        .poster { 
+            height: 330px; /* Увеличили высоту под картинку */
+            background-color: #2a2a2a; 
+            position: relative; 
+            overflow: hidden;
+        }
+        .poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .rating-badge { position: absolute; top: 10px; right: 10px; background-color: #ffb400; color: #000; padding: 5px 10px; border-radius: 5px; font-weight: bold; }
+        
+        .card-info { padding: 15px; }
+        .card-title { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+        .card-meta { color: #aaa; font-size: 14px; }
+
+        /* Плеер (iframe) */
+        .player-wrap {
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            border: 2px solid #ffb400;
+            box-shadow: 0 0 20px rgba(255, 180, 0, 0.2);
+            position: relative;
+            padding-bottom: 56.25%; /* 16:9 */
+            height: 0;
+        }
+        .player-wrap iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        .video-error {
+            padding: 40px;
+            text-align: center;
+            color: #ff6b6b;
+            background: #1e1e1e;
+        }
+
+        /* Инфо о фильме */
+        .movie-detail { display: flex; gap: 30px; background-color: #1e1e1e; padding: 30px; border-radius: 8px; margin-bottom: 30px; }
+        
+        /* Постер на странице фильма */
+        .movie-detail .poster { 
+            width: 250px; 
+            height: 370px; 
+            border-radius: 8px; 
+            flex-shrink: 0; 
+        }
+        .movie-detail .poster img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .movie-info { flex: 1; }
+        .movie-info p { color: #ccc; line-height: 1.6; }
+        .tag { display: inline-block; background-color: #333; padding: 3px 10px; border-radius: 15px; font-size: 14px; margin-right: 5px; margin-bottom: 5px; }
+
+        /* Рецензии */
+        .review { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
+        .review-head { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; }
+        .review-author { color: #ffb400; cursor: pointer; }
+        .review-score { color: #ffb400; }
+        
+        /* Рейтинг */
+        .rating-list-item { display: flex; align-items: center; background-color: #1e1e1e; padding: 15px 20px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 1px solid #333; }
+        .rating-list-item:hover { border-color: #ffb400; }
+        .rating-place { font-size: 20px; font-weight: bold; color: #ffb400; width: 50px; }
+        .rating-title { flex: 1; font-size: 18px; }
+        .rating-score { font-size: 20px; font-weight: bold; color: #ffb400; }
+
+        /* Профиль */
+        .profile-header { background-color: #1e1e1e; padding: 30px; border-radius: 8px; display: flex; align-items: center; gap: 20px; margin-bottom: 30px; }
+        .avatar { width: 80px; height: 80px; background-color: #ffb400; color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: bold; }
+        .empty { text-align: center; padding: 40px; color: #aaa; background: #1e1e1e; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="nav">
+        <a id="link-movies" onclick="showPage('movies')">Фильмы</a>
+        <a id="link-reviews" onclick="showPage('reviews')">Рецензии</a>
+        <a id="link-rating" onclick="showPage('rating')">Рейтинг</a>
+        <a id="link-profile" onclick="showPage('profile')">Профиль</a>
+    </div>
+</header>
+
+<div class="container" id="content"></div>
+
+<script>
+// ==========================================
+// БАЗА ДАННЫХ
+// ==========================================
+var movies = [
+    // Я вставил тестовые постеры. Замените ссылки в поле "poster" на настоящие!
+    { id: 1, title: "Побег из Шоушенка", year: 1994, genres: ["Драма"], director: "Фрэнк Дарабонт", ratings: [10,10,9,10,10], desc: "Бухгалтер Энди Дюфрейн обвинён в убийстве, которого не совершал. В тюрьме он находит друзей и надежду.", embed: "https://vkvideo.ru/video_ext.php?oid=-220018529&id=456243258&hash=auto", poster: "https://m.media-amazon.com/images/M/MV5BNDE3ODcxYzMtY2YzZC00NmNlLWJiNDMtZDViZWM2MzIxZDYwXkEyXkFqcGdeQXVyNjAwNDUxODI@._V1_FMjpg_UX1000_.jpg" },
+    { id: 2, title: "Крёстный отец", year: 1972, genres: ["Драма","Криминал"], director: "Фрэнсис Форд Коппола", ratings: [10,9,10,9,10], desc: "Криминальная сага о семье Корлеоне.", embed: "https://rutube.ru/play/embed/6c9f685c1dea6e3e306849e29152546d/", poster: "https://m.media-amazon.com/images/M/MV5BM2MyNjYxNmUtYTAwNi00MTYxLWJmNWYtYzZlODY3ZTk3OTFlXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_FMjpg_UX1000_.jpg" },
+    { id: 3, title: "Тёмный рыцарь", year: 2008, genres: ["Боевик","Триллер"], director: "Кристофер Нолан", ratings: [10,10,9,10,9], desc: "Бэтмен сталкивается с Джокером.", embed: "https://rutube.ru/play/embed/74fb252e6f3a0e6eaedb0909dc6eaf29/", poster: "https://m.media-amazon.com/images/M/MV5BMTMxNTMwODM0NF5BMl5BanBnXkFtZTcwODAyMTk2Mw@@._V1_FMjpg_UX1000_.jpg" },
+    { id: 4, title: "Криминальное чтиво", year: 1994, genres: ["Криминал","Драма"], director: "Квентин Тарантино", ratings: [9,9,8,10,9], desc: "Несколько пересекающихся историй.", embed: "https://rutube.ru/play/embed/a3011f67108068dd50c0cdd85b7b8a29/", poster: "https://m.media-amazon.com/images/M/MV5BNGNhMDIzZTUtNTBlZi00MTRlLWFjM2ItYzViMjE3YzI5MjljXkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_FMjpg_UX1000_.jpg" },
+    { id: 5, title: "Властелин колец: Возвращение короля", year: 2003, genres: ["Фэнтези","Приключения"], director: "Питер Джексон", ratings: [10,10,10,9,9], desc: "Финальная битва за Средиземье. Фродо и Сэм добираются до Огненной горы.", embed: "https://rutube.ru/play/embed/29580aaffc922753ccd8133b619e9d7e/", poster: "https://m.media-amazon.com/images/M/MV5BNzA5ZDNlZWMtM2NhNS00NDJjLTk4NDItYTRmY2EwMWZlMTY3XkEyXkFqcGdeQXVyNzkwMjQ5NzM@._V1_FMjpg_UX1000_.jpg" },
+    { id: 6, title: "Форрест Гамп", year: 1994, genres: ["Драма","Комедия"], director: "Роберт Земекис", ratings: [10,9,10,10,9], desc: "Жизнь простого парня из Алабамы.", embed: "https://rutube.ru/play/embed/9afee890461ce8e3f51facd201d0a4c1/", poster: "https://m.media-amazon.com/images/M/MV5BNWIwODRlZTUtY2U3ZS00Yzg1LWJhNzYtMmZiYmEyNmU1NjMzXkEyXkFqcGdeQXVyMTQxNzMzNDI@._V1_FMjpg_UX1000_.jpg" },
+    { id: 7, title: "Начало", year: 2010, genres: ["Фантастика","Триллер"], director: "Кристофер Нолан", ratings: [10,9,9,10,8], desc: "Вор, проникающий в сны, получает задание внедрить идею в чужое сознание.", embed: "https://rutube.ru/play/embed/27c335dcbef386ff6adfd3fb392465c0/", poster: "https://m.media-amazon.com/images/M/MV5BMjAxMzY3NjcxNF5BMl5BanBnXkFtZTcwNTI5OTM0Mw@@._V1_FMjpg_UX1000_.jpg" },
+    { id: 8, title: "Матрица", year: 1999, genres: ["Фантастика","Боевик"], director: "Братья Вачовски", ratings: [10,9,9,10,8], desc: "Хакер узнаёт, что реальность — симуляция, и становится частью сопротивления.", embed: "https://rutube.ru/play/embed/307c52af7c3e122855aea0899c247971/", poster: "https://m.media-amazon.com/images/M/MV5BNzQzOTk3OTAtNDQ0Zi00ZTVkLWI0MTEtMDllZjNkYzNjNTc4L2ltYWdlXkEyXkFqcGdeQXVyNjU0OTQ0OTY@._V1_FMjpg_UX1000_.jpg" }
+];
+
+var reviews = [
+    { movieId: 1, userId: 1, rating: 10, text: "Лучший фильм всех времен.", date: "2024-03-01" },
+    { movieId: 1, userId: 2, rating: 9, text: "Очень сильная драма.", date: "2024-03-05" },
+    { movieId: 3, userId: 1, rating: 10, text: "Хит Леджер — величайший злодей.", date: "2024-03-10" },
+    { movieId: 7, userId: 1, rating: 9, text: "Сложный, но захватывающий сюжет.", date: "2024-04-20" }
+];
+
+var users = [
+    { id: 1, name: "cinephile", regDate: "2023-01-15" },
+    { id: 2, name: "movie_fan", regDate: "2023-06-20" }
+];
+
+// ==========================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ==========================================
+function getAvg(ratings) {
+    if (!ratings.length) return "0.0";
+    var sum = 0;
+    for (var i = 0; i < ratings.length; i++) sum += ratings[i];
+    return (sum / ratings.length).toFixed(1);
+}
+function getUserName(id) {
+    for (var i = 0; i < users.length; i++) if (users[i].id === id) return users[i].name;
+    return "Аноним";
+}
+function findMovie(id) {
+    for (var i = 0; i < movies.length; i++) if (movies[i].id === id) return movies[i];
+    return null;
+}
+
+// ==========================================
+// НАВИГАЦИЯ
+// ==========================================
+function showPage(page) {
+    var links = ["movies", "reviews", "rating", "profile"];
+    for (var i = 0; i < links.length; i++) {
+        var el = document.getElementById("link-" + links[i]);
+        if (!el) continue;
+        el.className = (links[i] === page || (page === "movie" && links[i] === "movies")) ? "active" : "";
+    }
+    if (page === "movies") renderMovies();
+    else if (page === "reviews") renderReviews();
+    else if (page === "rating") renderRating();
+    else if (page === "profile") renderProfile();
+    window.scrollTo(0, 0);
+}
+
+// ==========================================
+// КАТАЛОГ
+// ==========================================
+function renderMovies() {
+    var container = document.getElementById("content");
+    var genres = [], years = [];
+    for (var i = 0; i < movies.length; i++) {
+        for (var j = 0; j < movies[i].genres.length; j++) {
+            if (genres.indexOf(movies[i].genres[j]) === -1) genres.push(movies[i].genres[j]);
+        }
+        if (years.indexOf(movies[i].year) === -1) years.push(movies[i].year);
+    }
+    genres.sort();
+    years.sort(function(a,b){ return b - a; });
+
+    var html = '<h1>Каталог фильмов</h1>';
+    html += '<div class="filters">';
+    html += '<div><label style="color:#aaa;display:block;margin-bottom:5px;">Жанр</label><select id="f-genre" onchange="filterMovies()"><option value="">Все жанры</option>';
+    for (var i = 0; i < genres.length; i++) html += '<option value="' + genres[i] + '">' + genres[i] + '</option>';
+    html += '</select></div>';
+    html += '<div><label style="color:#aaa;display:block;margin-bottom:5px;">Год</label><select id="f-year" onchange="filterMovies()"><option value="">Все годы</option>';
+    for (var i = 0; i < years.length; i++) html += '<option value="' + years[i] + '">' + years[i] + '</option>';
+    html += '</select></div>';
+    html += '<div><label style="color:#aaa;display:block;margin-bottom:5px;">Сортировка</label><select id="f-sort" onchange="filterMovies()"><option value="default">По умолчанию</option><option value="rating">По рейтингу</option><option value="year">По году</option></select></div>';
+    html += '</div><div class="grid" id="movies-grid"></div>';
+    container.innerHTML = html;
+    filterMovies();
+}
+
+function filterMovies() {
+    var genreEl = document.getElementById("f-genre");
+    var yearEl = document.getElementById("f-year");
+    var sortEl = document.getElementById("f-sort");
+    var genre = genreEl ? genreEl.value : "";
+    var year = yearEl ? yearEl.value : "";
+    var sort = sortEl ? sortEl.value : "default";
+
+    var filtered = [];
+    for (var i = 0; i < movies.length; i++) {
+        var m = movies[i];
+        var matchGenre = (genre === "") || (m.genres.indexOf(genre) !== -1);
+        var matchYear = (year === "") || (m.year.toString() === year);
+        if (matchGenre && matchYear) filtered.push(m);
+    }
+    if (sort === "rating") filtered.sort(function(a,b){ return parseFloat(getAvg(b.ratings)) - parseFloat(getAvg(a.ratings)); });
+    else if (sort === "year") filtered.sort(function(a,b){ return b.year - a.year; });
+
+    var grid = document.getElementById("movies-grid");
+    if (!grid) return;
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">Ничего не найдено</div>';
+        return;
+    }
+    var html = '';
+    for (var i = 0; i < filtered.length; i++) {
+        var m = filtered[i];
+        // Вставляем картинку, если она есть. Иначе оставляем эмодзи.
+        var posterHtml = m.poster 
+            ? '<img src="' + m.poster + '" alt="' + m.title + '">' 
+            : '🎬';
+            
+        html += '<div class="card" onclick="renderMovieDetail(' + m.id + ')">';
+        html += '<div class="poster">' + posterHtml + '<div class="rating-badge">★ ' + getAvg(m.ratings) + '</div></div>';
+        html += '<div class="card-info"><div class="card-title">' + m.title + '</div><div class="card-meta">' + m.year + ' • ' + m.genres.join(", ") + '</div></div>';
+        html += '</div>';
+    }
+    grid.innerHTML = html;
+}
+
+// ==========================================
+// СТРАНИЦА ФИЛЬМА (IFRAME)
+// ==========================================
+function renderMovieDetail(id) {
+    var movie = findMovie(id);
+    if (!movie) return;
+
+    var links = ["movies", "reviews", "rating", "profile"];
+    for (var i = 0; i < links.length; i++) {
+        var el = document.getElementById("link-" + links[i]);
+        if (el) el.className = (links[i] === "movies") ? "active" : "";
+    }
+
+    var html = '<div style="margin-bottom:20px;"><a href="#" onclick="showPage(\'movies\'); return false;" style="color:#ffb400;text-decoration:none;">← Назад к фильмам</a></div>';
+
+    // ПЛЕЕР (IFRAME)
+    html += '<h2>Смотреть фильм</h2>';
+    if (movie.embed && movie.embed.length > 0) {
+        html += '<div class="player-wrap">';
+        html += '<iframe src="' + movie.embed + '" allowfullscreen allow="autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock;" frameborder="0"></iframe>';
+        html += '</div>';
+    } else {
+        html += '<div class="player-wrap" style="padding-bottom:0;height:auto;"><div class="video-error">🎥 Видео пока не добавлено для этого фильма.</div></div>';
+    }
+
+    // ИНФО
+    // Вставляем картинку, если она есть. Иначе оставляем эмодзи.
+    var detailPosterHtml = movie.poster 
+        ? '<img src="' + movie.poster + '" alt="' + movie.title + '">' 
+        : '🎬';
+
+    html += '<div class="movie-detail">';
+    html += '<div class="poster">' + detailPosterHtml + '</div>';
+    html += '<div class="movie-info">';
+    html += '<h1>' + movie.title + ' <span style="color:#aaa;font-size:20px;">(' + movie.year + ')</span></h1>';
+    html += '<div style="margin-bottom:15px;">';
+    for (var i = 0; i < movie.genres.length; i++) html += '<span class="tag">' + movie.genres[i] + '</span>';
+    html += '</div>';
+    html += '<p><b>Режиссёр:</b> ' + movie.director + '</p>';
+    html += '<p style="margin-top:15px;">' + movie.desc + '</p>';
+    html += '<div style="margin-top:20px;font-size:24px;font-weight:bold;color:#ffb400;">★ ' + getAvg(movie.ratings) + '</div>';
+    html += '</div></div>';
+
+    // РЕЦЕНЗИИ
+    html += '<h2>Рецензии</h2>';
+    var movieReviews = [];
+    for (var i = 0; i < reviews.length; i++) if (reviews[i].movieId === id) movieReviews.push(reviews[i]);
+
+    if (movieReviews.length === 0) {
+        html += '<div class="empty">Пока нет рецензий. Будьте первым!</div>';
+    } else {
+        for (var i = 0; i < movieReviews.length; i++) {
+            var r = movieReviews[i];
+            html += '<div class="review">';
+            html += '<div class="review-head"><span class="review-author" onclick="renderUserProfile(' + r.userId + ')">' + getUserName(r.userId) + '</span><span class="review-score">★ ' + r.rating + '/10</span></div>';
+            html += '<div>' + r.text + '</div>';
+            html += '</div>';
+        }
+    }
+
+    document.getElementById("content").innerHTML = html;
+    window.scrollTo(0, 0);
+}
+
+// ==========================================
+// ВСЕ РЕЦЕНЗИИ
+// ==========================================
+function renderReviews() {
+    var html = '<h1>Все рецензии</h1>';
+    if (reviews.length === 0) {
+        html += '<div class="empty">Пока нет рецензий.</div>';
+    } else {
+        for (var i = 0; i < reviews.length; i++) {
+            var r = reviews[i];
+            var m = findMovie(r.movieId);
+            var movieTitle = m ? m.title : "Неизвестный фильм";
+            html += '<div class="review">';
+            html += '<div class="review-head"><span class="review-author" style="font-size:18px;" onclick="renderMovieDetail(' + r.movieId + ')">' + movieTitle + '</span><span class="review-score">★ ' + r.rating + '/10</span></div>';
+            html += '<div>' + r.text + '</div>';
+            html += '<div style="margin-top:10px;font-size:14px;color:#aaa;">Автор: ' + getUserName(r.userId) + '</div>';
+            html += '</div>';
+        }
+    }
+    document.getElementById("content").innerHTML = html;
+}
+
+// ==========================================
+// РЕЙТИНГ
+// ==========================================
+function renderRating() {
+    var sorted = movies.slice(0);
+    sorted.sort(function(a,b){ return parseFloat(getAvg(b.ratings)) - parseFloat(getAvg(a.ratings)); });
+    var html = '<h1>Топ фильмов</h1>';
+    for (var i = 0; i < sorted.length; i++) {
+        var m = sorted[i];
+        html += '<div class="rating-list-item" onclick="renderMovieDetail(' + m.id + ')">';
+        html += '<div class="rating-place">' + (i+1) + '</div>';
+        html += '<div class="rating-title">' + m.title + ' <span style="color:#aaa;font-size:14px;">(' + m.year + ')</span></div>';
+        html += '<div class="rating-score">★ ' + getAvg(m.ratings) + '</div>';
+        html += '</div>';
+    }
+    document.getElementById("content").innerHTML = html;
+}
+
+// ==========================================
+// ПРОФИЛЬ
+// ==========================================
+function renderProfile() { renderUserProfile(1); }
+
+function renderUserProfile(userId) {
+    var user = null;
+    for (var i = 0; i < users.length; i++) if (users[i].id === userId) user = users[i];
+    if (!user) return;
+
+    var links = ["movies", "reviews", "rating", "profile"];
+    for (var i = 0; i < links.length; i++) {
+        var el = document.getElementById("link-" + links[i]);
+        if (el) el.className = (links[i] === "profile") ? "active" : "";
+    }
+
+    var userReviews = [];
+    for (var i = 0; i < reviews.length; i++) if (reviews[i].userId === userId) userReviews.push(reviews[i]);
+
+    var html = '<div class="profile-header">';
+    html += '<div class="avatar">' + user.name.charAt(0).toUpperCase() + '</div>';
+    html += '<div><h1 style="margin:0;">' + user.name + '</h1>';
+    html += '<p style="color:#aaa;margin-top:5px;">На сайте с ' + user.regDate + '</p>';
+    html += '<p style="color:#ffb400;margin-top:10px;font-weight:bold;">Рецензий: ' + userReviews.length + '</p></div></div>';
+
+    html += '<h2>Рецензии пользователя</h2>';
+    if (userReviews.length === 0) {
+        html += '<div class="empty">Нет рецензий.</div>';
+    } else {
+        for (var i = 0; i < userReviews.length; i++) {
+            var r = userReviews[i];
+            var m = findMovie(r.movieId);
+            var movieTitle = m ? m.title : "Неизвестный фильм";
+            html += '<div class="review">';
+            html += '<div class="review-head"><span class="review-author" onclick="renderMovieDetail(' + r.movieId + ')">' + movieTitle + '</span><span class="review-score">★ ' + r.rating + '/10</span></div>';
+            html += '<div>' + r.text + '</div>';
+            html += '</div>';
+        }
+    }
+    document.getElementById("content").innerHTML = html;
+    window.scrollTo(0, 0);
+}
+
+// ==========================================
+// ЗАПУСК
+// ==========================================
+window.onload = function() { showPage("movies"); };
+</script>
+
+</body>
+</html>
